@@ -1,26 +1,22 @@
 import pygame
 from camera import Camera, camera_configure
 import settings
-import player
-import map
+from player import Player
+from map import load_map
 
 pygame.init()
 
 
-levels = ["./levels/1.txt", "./levels/2.txt"]
-
-
-def start_level(all_sprites: pygame.sprite.Group, level_number: int):
-    walls, portals, map_width, map_height, player_x, player_y = map.load_map(
-        level_filepath=levels[level_number],
-        image_filepath="./images/platform.png",
-        tile_groups=(all_sprites,),
-        portal_filepath="./images/portal.png",
-        portal_groups=(all_sprites,),
+def start_level(all_sprites: pygame.sprite.Group):
+    walls, portals, map_width, map_height, player_x, player_y = load_map(
+        level_schema="./levels/1.txt",
+        wall_img="./images/platform.png",
+        portal_img="./images/portal.png",
+        all_sprites=all_sprites,
     )
-    hero = player.create(
+    hero = Player(
         groups=(all_sprites,),
-        image_filepath="./images/mario.png",
+        image="./images/mario.png",
         start_x=player_x,
         start_y=player_y,
     )
@@ -35,8 +31,7 @@ def main():
 
     all_sprites = pygame.sprite.Group()
 
-    level_number = 0
-    hero, walls, portals, camera = start_level(all_sprites, level_number)
+    hero, walls, portals, camera = start_level(all_sprites)
 
     clock = pygame.time.Clock()
     run = True
@@ -48,25 +43,20 @@ def main():
 
         screen.fill(settings.BACKGROUND_COLOR)
 
-        player.move_controll(hero, walls)
-        player.handle_gravity(hero, walls)
-        # all_sprites.draw(screen) # 1. вариант до камеры
-        camera.update(hero)
-        for sprite in all_sprites:
-            screen.blit(sprite.image, (camera.apply(sprite)))
+        if not end_game:
+            hero.move_controll(walls)
+            hero.handle_gravity(walls)
 
-        for portal in portals:
-            if pygame.sprite.collide_mask(hero, portal):
-                level_number += 1
-                all_sprites.empty()
-                if level_number < len(levels):
-                    hero, walls, portals, camera = start_level(
-                        all_sprites, level_number
-                    )
-                else:
+            # all_sprites.draw(screen) # 1. вариант до камеры
+            camera.update(hero.sprite)
+            for sprite in all_sprites:
+                screen.blit(sprite.image, (camera.apply(sprite)))
+
+            for portal in portals:
+                if pygame.sprite.collide_mask(hero.sprite, portal):
                     end_game = True
 
-        if end_game is True:
+        else:
             font_obj = pygame.font.Font(None, 64)
             text = font_obj.render("YOU WIN!", True, "white")
             screen.blit(text, (500, 300))

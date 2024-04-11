@@ -2,65 +2,63 @@ import pygame
 import settings
 
 
-def create(
-    groups: tuple[pygame.sprite.Group],
-    image_filepath: str,
-    start_x: int = settings.TILE_WIDTH + 5,
-    start_y: int = settings.TILE_HEIGHT + 5,
-) -> pygame.sprite.Sprite:
-    player = pygame.sprite.Sprite(*groups)
-    player.image = pygame.image.load(image_filepath)
-    player.rect = player.image.get_rect()
-    player.onGround = False
-    player.x_speed = 0
-    player.y_speed = 0
-    player.rect.x = start_x
-    player.rect.y = start_y
-    return player
+class Player:
+    def __init__(
+        self,
+        groups: tuple[pygame.sprite.Group],
+        image: str,
+        start_x: int = settings.TILE_WIDTH + 5,
+        start_y: int = settings.TILE_HEIGHT + 5,
+    ) -> pygame.sprite.Sprite:
+        self.sprite = pygame.sprite.Sprite(*groups)
+        self.sprite.image = pygame.image.load(image)
+        self.sprite.rect = self.sprite.image.get_rect()
+        self.sprite.rect.x = start_x
+        self.sprite.rect.y = start_y
+        self.onGround = False
+        self.x_speed = 0
+        self.y_speed = 0
 
+    def check_collide(self, tiles, x_vel=0, y_vel=0):
+        for tile in tiles:
+            if pygame.sprite.collide_mask(self.sprite, tile):
+                if x_vel > 0:
+                    self.sprite.rect.right = tile.rect.left
 
-def check_collide(hero, tiles, x_vel=0, y_vel=0):
-    for tile in tiles:
-        if pygame.sprite.collide_mask(hero, tile):
-            if x_vel > 0:
-                hero.rect.right = tile.rect.left
+                if x_vel < 0:
+                    self.sprite.rect.left = tile.rect.right
 
-            if x_vel < 0:
-                hero.rect.left = tile.rect.right
+                if y_vel > 0:
+                    self.sprite.rect.bottom = tile.rect.top
+                    self.onGround = True
+                    self.y_speed = 0
 
-            if y_vel > 0:
-                hero.rect.bottom = tile.rect.top
-                hero.onGround = True
-                hero.y_speed = 0
+                if y_vel < 0:
+                    self.sprite.rect.top = tile.rect.bottom
+                    self.y_speed = 0
 
-            if y_vel < 0:
-                hero.rect.top = tile.rect.bottom
-                hero.y_speed = 0
+    def move_controll(self, tiles):
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_a]:
+            self.x_speed = -settings.PLAYER_MOVE_SPEED
+        elif keys[pygame.K_d]:
+            self.x_speed = settings.PLAYER_MOVE_SPEED
+        else:
+            self.x_speed = 0
 
+        self.sprite.rect.x += self.x_speed
+        self.check_collide(tiles, x_vel=self.x_speed)
 
-def move_controll(hero, tiles):
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_a]:
-        hero.x_speed = -settings.PLAYER_MOVE_SPEED
-    elif keys[pygame.K_d]:
-        hero.x_speed = settings.PLAYER_MOVE_SPEED
-    else:
-        hero.x_speed = 0
+    def handle_gravity(self, tiles):
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_SPACE]:
+            if self.onGround:  # прыгаем, только когда можем оттолкнуться от земли
+                self.y_speed = -settings.JUMP_POWER
 
-    hero.rect.x += hero.x_speed
-    check_collide(hero, tiles, x_vel=hero.x_speed)
+        if not self.onGround:
+            self.y_speed += settings.GRAVITY
 
+        self.onGround = False
 
-def handle_gravity(hero, tiles):
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_SPACE]:
-        if hero.onGround:  # прыгаем, только когда можем оттолкнуться от земли
-            hero.y_speed = -settings.JUMP_POWER
-
-    if not hero.onGround:
-        hero.y_speed += settings.GRAVITY
-
-    hero.onGround = False
-
-    hero.rect.y += hero.y_speed
-    check_collide(hero, tiles, y_vel=hero.y_speed)
+        self.sprite.rect.y += self.y_speed
+        self.check_collide(tiles, y_vel=self.y_speed)
